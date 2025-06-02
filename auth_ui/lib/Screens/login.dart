@@ -2,19 +2,89 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:provider/provider.dart';
+import '../appWrite/appwrite_client.dart';
+import 'forgot_password_screen.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    // التحقق من صحة البيانات
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'الرجاء إدخال البريد الإلكتروني وكلمة المرور';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final success = await authProvider.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (success && mounted) {
+        Navigator.of(context).pushReplacementNamed('/meals');
+      } else if (mounted) {
+        setState(() {
+          _errorMessage = authProvider.error ?? 'فشل تسجيل الدخول';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // إغلاق لوحة المفاتيح عند النقر خارج حقول الإدخال
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
     const one = Color.fromARGB(213, 32, 32, 32);
     const two = Color(0xFFF5F5F5);
     const three = Color(0xFF7c7be6);
-    return Scaffold(
+    return GestureDetector(
+      onTap: _dismissKeyboard, // إغلاق لوحة المفاتيح عند النقر في أي مكان
+      child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Stack(children: [
-          Positioned(top: 50, left: 10, child: BackButton()),
+          // Removed back button to prevent navigation back to welcome screen after login
           Container(
             margin: EdgeInsets.only(top: 100),
             child: SingleChildScrollView(
@@ -23,11 +93,27 @@ class LoginPage extends StatelessWidget {
                 children: [
                   Text(
                     'تسجيل الدخول',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
                   ),
                   SizedBox(height: 39),
                   Column(
                     children: [
+                      // عرض رسالة الخطأ إذا وجدت
+                      if (_errorMessage != null)
+                        Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 8),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      
                       Container(
                         padding: EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -38,6 +124,7 @@ class LoginPage extends StatelessWidget {
                           horizontal: 40,
                         ),
                         child: TextField(
+                          controller: _emailController,
                           style: TextStyle(),
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
@@ -66,9 +153,10 @@ class LoginPage extends StatelessWidget {
                           horizontal: 40,
                         ),
                         child: TextField(
+                          controller: _passwordController,
                           style: TextStyle(),
                           obscureText: true,
-                          textInputAction: TextInputAction.next,
+                          textInputAction: TextInputAction.done,
                           cursorColor: three,
                           textAlign: TextAlign.end,
                           decoration: InputDecoration(
@@ -91,11 +179,24 @@ class LoginPage extends StatelessWidget {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(right: 50),
-                            child: Text(
-                              'نسيت الرقم السري ؟',
-                              style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF5A5959)),
-                              textDirection: TextDirection.rtl,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'نسيت الرقم السري ؟',
+                                style: TextStyle(
+                                  fontSize: 12, 
+                                  color: three,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textDirection: TextDirection.rtl,
+                              ),
                             ),
                           ),
                         ],
@@ -105,44 +206,55 @@ class LoginPage extends StatelessWidget {
                       ),
                       TextButton(
                           style: ButtonStyle(
-                              shape: MaterialStatePropertyAll(
+                              shape: WidgetStatePropertyAll(
                                   RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(9))),
-                              backgroundColor: MaterialStatePropertyAll(three),
-                              padding: MaterialStatePropertyAll(
+                                        borderRadius:
+                                            BorderRadius.circular(9))),
+                              backgroundColor: WidgetStatePropertyAll(three),
+                              padding: WidgetStatePropertyAll(
                                   EdgeInsets.symmetric(
                                       vertical: 6, horizontal: 95))),
-                          onPressed: () {
-                            Navigator.pushNamed(context, '');
-                          },
+                          onPressed: _isLoading ? null : _login,
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              'تسجيل الدخول ',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2),
-                            ),
+                            child: _isLoading
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    'تسجيل الدخول ',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
                           )),
                       SizedBox(
                         height: 18,
                       ),
                       TextButton(
                           style: ButtonStyle(
-                              shape: MaterialStatePropertyAll(
+                              shape: WidgetStatePropertyAll(
                                   RoundedRectangleBorder(
                                       side: BorderSide(
-                                          width: 1.7, color: Color(0xFFa3a3a3)),
-                                      borderRadius: BorderRadius.circular(9))),
+                                            width: 1.7,
+                                            color: Color(0xFFa3a3a3)),
+                                        borderRadius:
+                                            BorderRadius.circular(9))),
                               backgroundColor:
-                                  MaterialStatePropertyAll(Colors.transparent),
-                              padding: MaterialStatePropertyAll(
+                                  WidgetStatePropertyAll(Colors.transparent),
+                              padding: WidgetStatePropertyAll(
                                   EdgeInsets.symmetric(
                                       vertical: 6, horizontal: 98))),
                           onPressed: () {
-                            Navigator.pushNamed(context, '/signup');
+                              Navigator.pushReplacementNamed(
+                                  context, '/signup');
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -183,7 +295,8 @@ class LoginPage extends StatelessWidget {
                             ),
                             width: 150,
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                               children: [
                                 SvgPicture.asset('assets/icons/google-2.svg'),
                                 Text(
@@ -213,7 +326,8 @@ class LoginPage extends StatelessWidget {
                             ),
                             width: 150,
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                               children: [
                                 SvgPicture.asset(
                                   'assets/icons/apple.svg',
@@ -255,6 +369,7 @@ class LoginPage extends StatelessWidget {
               ),
             ),
           ),
-        ]));
+        ])),
+    );
   }
 }

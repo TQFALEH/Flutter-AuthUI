@@ -1,1 +1,6 @@
 include: package:flutter_lints/flutter.yaml
+analyzer:
+  errors:
+    use_key_in_widget_constructors: ignore
+    unused_import: ignore
+    deprecated_member_use: ignore

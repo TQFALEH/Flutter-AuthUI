@@ -2,19 +2,95 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:provider/provider.dart';
+import '../appWrite/appwrite_client.dart';
 
-class Signup extends StatelessWidget {
+class Signup extends StatefulWidget {
   const Signup({super.key});
+
+  @override
+  State<Signup> createState() => _SignupState();
+}
+
+class _SignupState extends State<Signup> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    // التحقق من صحة البيانات
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'الرجاء إدخال جميع البيانات المطلوبة';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final success = await authProvider.register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+      );
+
+      if (success && mounted) {
+        Navigator.of(context).pushReplacementNamed('/meals');
+      } else if (mounted) {
+        setState(() {
+          _errorMessage = authProvider.error ?? 'فشل إنشاء الحساب';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // إغلاق لوحة المفاتيح عند النقر خارج حقول الإدخال
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
     const one = Color.fromARGB(213, 32, 32, 32);
     const two = Color(0xFFF5F5F5);
     const three = Color(0xFF7c7be6);
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Stack(children: [
-        Positioned(top: 50, left: 10, child: BackButton()),
+    return GestureDetector(
+      onTap: _dismissKeyboard, // إغلاق لوحة المفاتيح عند النقر في أي مكان
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: Stack(children: [
+        // Removed back button to prevent navigation back to welcome screen after signup
         Container(
           margin: EdgeInsets.only(top: 100),
           child: SingleChildScrollView(
@@ -28,6 +104,20 @@ class Signup extends StatelessWidget {
                 SizedBox(height: 39),
                 Column(
                   children: [
+                    // عرض رسالة الخطأ إذا وجدت
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      
                     Container(
                       padding: EdgeInsets.all(2),
                       decoration: BoxDecoration(
@@ -38,6 +128,7 @@ class Signup extends StatelessWidget {
                         horizontal: 40,
                       ),
                       child: TextField(
+                        controller: _nameController,
                         showCursor: true,
                         style: TextStyle(),
                         keyboardType: TextInputType.name,
@@ -67,6 +158,7 @@ class Signup extends StatelessWidget {
                         horizontal: 40,
                       ),
                       child: TextField(
+                        controller: _emailController,
                         style: TextStyle(),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
@@ -95,6 +187,7 @@ class Signup extends StatelessWidget {
                         horizontal: 40,
                       ),
                       child: TextField(
+                        controller: _phoneController,
                         style: TextStyle(),
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.next,
@@ -123,9 +216,10 @@ class Signup extends StatelessWidget {
                         horizontal: 40,
                       ),
                       child: TextField(
+                        controller: _passwordController,
                         style: TextStyle(),
                         obscureText: true,
-                        textInputAction: TextInputAction.next,
+                        textInputAction: TextInputAction.done,
                         cursorColor: three,
                         textAlign: TextAlign.end,
                         decoration: InputDecoration(
@@ -145,27 +239,33 @@ class Signup extends StatelessWidget {
                     ),
                     TextButton(
                         style: ButtonStyle(
-                            shape: MaterialStatePropertyAll(
+                            shape: WidgetStatePropertyAll(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(9))),
-                            backgroundColor: MaterialStatePropertyAll(three),
-                            padding: MaterialStatePropertyAll(
+                            backgroundColor: WidgetStatePropertyAll(three),
+                            padding: WidgetStatePropertyAll(
                                 EdgeInsets.symmetric(
                                     vertical: 6, horizontal: 95))),
-                        onPressed: () {
-                          // Navigator.pushNamed(context, '');
-                          print('Clicked');
-                        },
+                        onPressed: _isLoading ? null : _register,
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            'تسجيل حساب ',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2),
-                          ),
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'تسجيل حساب ',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2),
+                                ),
                         )),
                     SizedBox(
                       height: 18,
@@ -250,10 +350,15 @@ class Signup extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'هنا ',
-                          style: TextStyle(
-                              color: three, fontWeight: FontWeight.bold),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacementNamed(context, '/login');
+                          },
+                          child: Text(
+                            'هنا ',
+                            style: TextStyle(
+                                color: three, fontWeight: FontWeight.bold),
+                          ),
                         ),
                         Text('عندك حساب ؟ سجل دخولك من ',
                             style: TextStyle(
@@ -267,7 +372,8 @@ class Signup extends StatelessWidget {
             ),
           ),
         ),
-      ]),
+        ]),
+      ),
     );
   }
 }

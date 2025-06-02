@@ -78,13 +78,13 @@ class home extends StatelessWidget {
           ),
           TextButton(
               style: ButtonStyle(
-                  shape: MaterialStatePropertyAll(RoundedRectangleBorder(
+                  shape: WidgetStatePropertyAll(RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(9))),
-                  backgroundColor: MaterialStatePropertyAll(three),
-                  padding: MaterialStatePropertyAll(
+                  backgroundColor: WidgetStatePropertyAll(three),
+                  padding: WidgetStatePropertyAll(
                       EdgeInsets.symmetric(vertical: 8, horizontal: 85))),
               onPressed: () {
-                Navigator.pushNamed(context, '/login');
+                Navigator.pushReplacementNamed(context, '/login');
               },
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
